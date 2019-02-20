@@ -1,8 +1,6 @@
-{%- from "galera/map.jinja" import master, slave with context %}
-{%- if master.get('enabled', False) %}
-  {%- set service, role = master, 'master' %}
-{%-  elif slave.get('enabled', False) %}
-  {%- set service, role = slave, 'slave' %}
+{%- from "galera/map.jinja" import galera with context %}
+{%- if galera.get('enabled', False) %}
+  {%- set service = galera %}
 {%- endif %}
 
 {%- if service.get('ssl', {}).get('enabled', False) %}
@@ -19,7 +17,7 @@ galera_ssl_dir:
 mysql_cacertificate:
   file.managed:
     - name: {{ service.ssl.ca_file }}
-    - contents_pillar: galera:{{ role }}:ssl:cacert_chain
+    - contents_pillar: galera:ssl:cacert_chain
     - mode: 0444
     - makedirs: true
     - require_in:
@@ -46,7 +44,7 @@ mysql_cacertificate:
 mysql_certificate:
   file.managed:
     - name: {{ service.ssl.cert_file }}
-    - contents_pillar: galera:{{ role }}:ssl:cert
+    - contents_pillar: galera:ssl:cert
     - mode: 0444
     - makedirs: true
     - require_in:
@@ -73,7 +71,7 @@ mysql_certificate:
 mysql_server_key:
   file.managed:
     - name: {{ service.ssl.key_file }}
-    - contents_pillar: galera:{{ role }}:ssl:key
+    - contents_pillar: galera:ssl:key
     - user: root
     - group: mysql
     - mode: 0440

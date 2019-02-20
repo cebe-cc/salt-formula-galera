@@ -2,7 +2,7 @@
 {% set galera_version = pillar.galera.get('version', {}).get('galera', '3')  %}
 {% set engine = pillar.galera.get('engine', 'mysql') %}
 
-{%- load_yaml as master %}
+{%- load_yaml as galera %}
   default:
     max_connections: 20000
     innodb_buffer_pool_size: '3138M'
@@ -45,93 +45,13 @@
     socket: /var/run/mariadb/mysqld.sock
     config: /etc/my.cnf
 {%- endload %}
-{%- set _pillar = pillar.galera.get('master', {}) %}
+{%- set _pillar = pillar.get('galera', {}) %}
 {%- if  _pillar|length > 1 %}
-{%- set master = salt['grains.filter_by'](master, merge=_pillar, base='default') %}
+{%- set galera = salt['grains.filter_by'](galera, merge=_pillar, base='default') %}
 {%- else %}
-{%- set master = salt['grains.filter_by'](master, base='default') %}
+{%- set galera = salt['grains.filter_by'](galera, base='default') %}
 {%- endif %}
 
-
-{%- load_yaml as slave %}
-  default:
-    max_connections: 20000
-    innodb_buffer_pool_size: '3138M'
-  Debian:
-    pkgs:
-{%- if engine == 'mysql' %}
-    - mysql-wsrep-{{ mysql_version }}
-    - python-mysqldb
-    - libdbd-mysql
-    - libmysqlclient18
-    - percona-xtrabackup
-{%- else %}
-    - mariadb-server
-    - mariadb-client
-{%- endif %}
-    - galera-{{ galera_version }}
-    - rsync
-    - psmisc
-    - netcat
-    - socat
-    - python-pymysql
-    service: {{ engine }}
-    wsrep_provider: /usr/lib/galera/libgalera_smm.so
-    log_file: /var/log/mysql.log
-    socket: /var/run/mysqld/mysqld.sock
-    config: /etc/mysql/my.cnf
-  RedHat:
-    pkgs:
-    - galera
-    - mariadb-galera-server
-    - mariadb
-    - MySQL-python
-    - rsync
-    - percona-xtrabackup
-    - psmisc
-    - socat
-    xtrabackup_repo: http://www.percona.com/downloads/percona-release/redhat/0.1-3/percona-release-0.1-3.noarch.rpm
-    service: mariadb
-    wsrep_provider: /usr/lib64/galera/libgalera_smm.so
-    log_file: /var/log/mariadb/mariadb.log
-    socket: /var/run/mariadb/mysqld.sock
-    config: /etc/my.cnf
-{%- endload %}
-{%- load_yaml as slave_oscodename %}
-  trusty:
-    pkgs:
-    - mysql-wsrep-{{ mysql_version }}
-    - galera-{{ galera_version }}
-    - rsync
-    - python-mysqldb
-    - libmysqlclient18
-    - psmisc
-    - netcat
-    - percona-xtrabackup
-    - socat
-    - libdbd-mysql
-    - python-pymysql
-  xenial:
-    pkgs:
-    - mysql-wsrep-{{ mysql_version }}
-    - galera-{{ galera_version }}
-    - rsync
-    - python-mysqldb
-    - libmysqlclient-dev
-    - psmisc
-    - netcat
-    - percona-xtrabackup
-    - socat
-    - libdbd-mysql
-    - python-pymysql
-{%- endload %}
-{%- set _pillar = pillar.galera.get('slave', {}) %}
-{%- if  _pillar|length > 1 %}
-{%- set _oscodename = salt['grains.filter_by'](slave_oscodename, grain='oscodename', merge=_pillar) %}
-{%- else %}
-{%- set _oscodename = salt['grains.filter_by'](slave_oscodename, grain='oscodename') %}
-{%- endif %}
-{%- set slave = salt['grains.filter_by'](slave, merge=_oscodename, base='default') %}
 
 {% set clustercheck = salt['grains.filter_by']({
   'Debian': {

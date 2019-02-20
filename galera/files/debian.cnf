@@ -1,10 +1,6 @@
-{%- if pillar.galera.get('master',{}).get('enabled', False) %}
-{%- from "galera/map.jinja" import master with context %}
-{%- set service = master %}
-{%- endif %}
-{%- if pillar.galera.get('slave',{}).get('enabled', False) %}
-{%- from "galera/map.jinja" import slave with context %}
-{%- set service = slave %}
+{%- if pillar.get('galera',{}).get('enabled', False) %}
+{%- from "galera/map.jinja" import galera with context %}
+{%- set service = galera %}
 {%- endif %}
 [client]
 host = localhost

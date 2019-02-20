@@ -11,7 +11,7 @@ growth.
 Sample pillars
 ==============
 
-Galera cluster master node
+Galera cluster node
 
 .. code-block:: yaml
 
@@ -20,80 +20,59 @@ Galera cluster master node
         mysql: 5.6
         galera: 3
       engine: mysql or mariadb
-      master:
-        enabled: true
-        name: openstack
-        bind:
-          address: 192.168.0.1
-          port: 3306
-        members:
-        - host: 192.168.0.1
-          port: 4567
-        - host: 192.168.0.2
-          port: 4567
-        admin:
-          user: root
-          password: pass
-        database:
-          name:
-            encoding: 'utf8'
-            users:
-            - name: 'username'
-              password: 'password'
-              host: 'localhost'
-              rights: 'all privileges'
-              database: '*.*'
+      enabled: true
+      name: openstack
+      bind:
+        address: 192.168.0.1
+        port: 3306
+      members:
+      - host: 192.168.0.1
+        port: 4567
+      - host: 192.168.0.2
+        port: 4567
+      admin:
+        user: root
+        password: pass
+      database:
+        name:
+          encoding: 'utf8'
+          users:
+          - name: 'username'
+            password: 'password'
+            host: 'localhost'
+            rights: 'all privileges'
+            database: '*.*'
 
-Galera cluster slave node
-
-.. code-block:: yaml
-
-    galera:
-      slave:
-        enabled: true
-        name: openstack
-        bind:
-          address: 192.168.0.2
-          port: 3306
-        members:
-        - host: 192.168.0.1
-          port: 4567
-        - host: 192.168.0.2
-          port: 4567
-        admin:
-          user: root
-          password: pass
 
 Enable TLS support:
 
 .. code-block:: yaml
 
     galera:
-       slave or master:
-         ssl:
-          enabled: True
-          ciphers:
-            DHE-RSA-AES128-SHA:
-              enabled: True
-            DHE-RSA-AES256-SHA:
-              enabled: True
-            EDH-RSA-DES-CBC3-SHA:
-              name: EDH-RSA-DES-CBC3-SHA
-              enabled: True
-            AES128-SHA:AES256-SHA:
-              name: AES128-SHA:AES256-SHA
-              enabled: True
-            DES-CBC3-SHA:
-              enabled: True
-          # path
-          cert_file: /etc/mysql/ssl/cert.pem
-          key_file: /etc/mysql/ssl/key.pem
-          ca_file: /etc/mysql/ssl/ca.pem
+       ssl:
+        enabled: True
+        ciphers:
+          DHE-RSA-AES128-SHA:
+            enabled: True
+          DHE-RSA-AES256-SHA:
+            enabled: True
+          EDH-RSA-DES-CBC3-SHA:
+            name: EDH-RSA-DES-CBC3-SHA
+            enabled: True
+          AES128-SHA:AES256-SHA:
+            name: AES128-SHA:AES256-SHA
+            enabled: True
+          DES-CBC3-SHA:
+            enabled: True
+        # path
+        cert_file: /etc/mysql/ssl/cert.pem
+        key_file: /etc/mysql/ssl/key.pem
+        ca_file: /etc/mysql/ssl/ca.pem
 
-          # content (not required if files already exists)
-          key: << body of key >>
-          cert: << body of cert >>
-          cacert_chain: << body of ca certs chain >>
+        # content (not required if files already exists)
+        key: << body of key >>
+        cert: << body of cert >>
+        cacert_chain: << body of ca certs chain >>
 
 
 Additional mysql users:
@@ -201,71 +180,31 @@ Galera monitoring command, performed from extra server
 
     garbd -a gcomm://ipaddrofone:4567 -g my_wsrep_cluster -l /tmp/1.out -d
 
-#. salt-call state.sls mysql
-#. Comment everything starting wsrep* (wsrep_provider, wsrep_cluster, wsrep_sst)
-#. service mysql start
-#. run on each node mysql_secure_install and filling root password.
 
-   .. code-block:: bash
+Bootstrapping a new cluster
+===========================
 
-    Enter current password for root (enter for none):
-    OK, successfully used password, moving on...
+The normal operation of a Galera cluster is that a new member
+will automatically join when running the high state.
 
-    Setting the root password ensures that nobody can log into the MySQL
-    root user without the proper authorisation.
+There are two special cases:
 
-    Set root password? [Y/n] y
-    New password:
-    Re-enter new password:
-    Password updated successfully!
-    Reloading privilege tables..
-     ... Success!
+#. Bootstrapping a brand new cluster
+#. Recover a stopped cluster
 
-    By default, a MySQL installation has an anonymous user, allowing anyone
-    to log into MySQL without having to have a user account created for
-    them.  This is intended only for testing, and to make the installation
-    go a bit smoother.  You should remove them before moving into a
-    production environment.
+The first case is covered by orchestration.
 
-    Remove anonymous users? [Y/n] y
-     ... Success!
+.. code-block:: bash
 
-    Normally, root should only be allowed to connect from 'localhost'.  This
-    ensures that someone cannot guess at the root password from the network.
+    salt-run state.orchestrate galera.orchestrate.cluster saltenv=test pillar='{ saltenv : test, galera_cluster : cluster1 }'
 
-    Disallow root login remotely? [Y/n] n
-     ... skipping.
+Passing the pillar data is necessary to propagate the saltenv setting.
+This is not required for the base environment which is the default.
 
-    By default, MySQL comes with a database named 'test' that anyone can
-    access.  This is also intended only for testing, and should be removed
-    before moving into a production environment.
+The bootstrap will test (and fail) if any of the nodes already have
+pre-existing cluster data, since bootstrapping over an existing cluster
+is dangerous and destructive.
 
-    Remove test database and access to it? [Y/n] y
-     - Dropping test database...
-     ... Success!
-     - Removing privileges on test database...
-     ... Success!
-
-    Reloading the privilege tables will ensure that all changes made so far
-    will take effect immediately.
-
-    Reload privilege tables now? [Y/n] y
-     ... Success!
-
-    Cleaning up...
-
-#. service mysql stop
-#. uncomment all wsrep* lines except first server, where leave only in
-   my.cnf wsrep_cluster_address='gcomm://';
-#. start first node
-#. Start third node which is connected to first one
-#. Start second node which is connected to third one
-#. After starting cluster, it must be change cluster address at first starting node
-   without restart database and change config my.cnf.
-
-   .. code-block:: bash
-
-      mysql> SET GLOBAL wsrep_cluster_address='gcomm://10.0.0.2';
 
 Read more
 =========
