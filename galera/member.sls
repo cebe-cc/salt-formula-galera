@@ -29,7 +29,7 @@ xtrabackup_repo_fix:
 
 galera_packages:
   pkg.installed:
-  - names: {{ galera.pkgs }}
+  - names: {{ galera.pkgs | tojson }}
   - refresh: true
   - force_yes: True
 
